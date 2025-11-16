@@ -1,0 +1,40 @@
+{
+  "name": "expo-workers-monorepo",
+  "version": "1.0.0",
+  "description": "⚡ Expo (React Native) + Cloudflare Workers (Hono) monorepo boilerplate with pnpm workspace",
+  "main": "index.js",
+  "scripts": {
+    "predev": "pnpm dlx kill-port 8787 || true",
+    "dev": "pnpm --filter api dev & pnpm --filter client dev",
+    "dev:parallel": "pnpm --parallel --stream -r dev",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "keywords": [
+    "expo",
+    "react-native",
+    "cloudflare-workers",
+    "hono",
+    "typescript",
+    "monorepo",
+    "pnpm-workspace",
+    "boilerplate",
+    "starter-template",
+    "fullstack"
+  ],
+  "author": "Keiji-Miyake",
+  "license": "MIT",
+  "packageManager": "pnpm@10.20.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Keiji-Miyake/expo-workers-monorepo.git"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.56.1"
+  }
+}
