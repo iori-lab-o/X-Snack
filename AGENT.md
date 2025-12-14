@@ -141,14 +141,45 @@ expo-workers-monorepo/
 ### Client 環境変数 (.env)
 
 ```bash
-# apps/client/.env.example を参照
+# apps/client/.env
 EXPO_PUBLIC_HONO_API_URL=http://localhost:8787  # 開発環境
 # EXPO_PUBLIC_HONO_API_URL=https://your-api.workers.dev  # 本番環境
 ```
 
-### API 環境変数
+### API 環境変数（X風要約AI用）
 
-Cloudflare Workers のシークレットは `wrangler secret put` で設定。
+#### ローカル開発（apps/api/.dev.vars）
+
+```bash
+# Primary AI（必須推奨、無料）
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+
+# Tertiary AI（オプション、トークンなしでも動作）
+HUGGINGFACE_API_TOKEN=YOUR_HF_TOKEN_HERE
+```
+
+#### 本番環境（Cloudflare Secrets）
+
+```bash
+# Gemini API Key
+pnpm wrangler secret put GEMINI_API_KEY
+
+# Hugging Face Token（オプション）
+pnpm wrangler secret put HUGGINGFACE_API_TOKEN
+```
+
+#### Cloudflare Bindings（wrangler.jsonc）
+
+```jsonc
+{
+  "kv_namespaces": [
+    {"binding": "RATE_LIMIT_KV", "id": "YOUR_KV_NAMESPACE_ID"}
+  ],
+  "ai": {"binding": "AI"}  // Workers AI（Secondary、自動有効化）
+}
+```
+
+**重要**: Workers AIは無料枠超過時に自動停止（課金なし設定）
 
 ## 重要な注意事項
 
@@ -169,6 +200,42 @@ Cloudflare Workers のシークレットは `wrangler secret put` で設定。
 - `GET /api/users/:id`: ユーザー詳細
 - `POST /api/users`: ユーザー作成
 - `GET /health`: ヘルスチェック
+- **`POST /api/summarize`: X風要約AI（マルチプロバイダーフォールバック）**
+
+### X風要約AI の実装詳細
+
+#### マルチプロバイダーフォールバック戦略
+
+完全無料・課金なしを実現する3段階フォールバック:
+
+1. **Gemini API** (`gemini-1.5-flash`): Primary、最高品質、60req/min無料
+2. **Cloudflare Workers AI** (`llama-3.2-1b-instruct`): Secondary、10k Neurons/日無料、課金なし
+3. **Hugging Face** (`google/flan-t5-base`): Tertiary、完全無料、最終手段
+4. **Mock応答**: 全AI失敗時のフォールバック
+
+#### レート制限
+
+- **制限**: 1日3回/IP（Cloudflare KVで管理）
+- **キー形式**: `rate:{IP}:{YYYY-MM-DD}`
+- **TTL**: 86400秒（24時間、UTC 0時に自動リセット）
+- **超過時**: HTTP 429、エラーメッセージ、remainingCount: 0
+
+#### 入出力仕様
+
+- **入力制限**: 最大1500文字（超過時は自動トリム）
+- **出力形式**: 280字以内（本文 + ハッシュタグ）
+- **ハッシュタグ**: 2〜3個、末尾に統一
+- **絵文字**: 最大2個
+- **重複除去**: ハッシュタグの自動重複削除
+
+#### レスポンスフィールド
+
+- `success`: 成功/失敗
+- `data.summary`: 要約本文（280字以内）
+- `data.hashtags`: 抽出されたハッシュタグ配列
+- `data.characterCount`: 文字数
+- `remainingCount`: 残り利用回数（0〜3）
+- `provider`: 使用したAI（gemini/workers-ai/huggingface/mock）
 
 ## テスト戦略
 

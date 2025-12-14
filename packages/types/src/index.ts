@@ -12,3 +12,14 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+// X風要約AI用の型定義
+export interface SummarizeRequest {
+  text: string;
+}
+
+export interface SummarizeResponse {
+  summary: string;
+  hashtags: string[];
+  characterCount: number;
+}

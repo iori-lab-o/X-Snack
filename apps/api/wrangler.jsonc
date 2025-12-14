@@ -12,7 +12,44 @@
   },
   "observability": {
     "enabled": true
+  },
+  /**
+   * KV Namespace for Rate Limiting (1日3回制限用)
+   * ローカルでは wrangler kv:namespace create RATE_LIMIT_KV でID取得後、ここに記載
+   * 本番: wrangler kv:namespace create RATE_LIMIT_KV --preview false
+   */
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "52ae784c023c4275b480bc178bd5887d"
+    }
+  ],
+  /**
+   * Workers AI バインディング (バックアップ用、10k Neurons/日まで完全無料)
+   * ⚠️ 課金防止: 無料枠超過時は自動停止（課金されない）
+   * 設定方法: wrangler.toml に ai = { binding = "AI" } を追加（自動有効化）
+   */
+  "ai": {
+    "binding": "AI"
   }
+  /**
+   * 🔑 シークレット管理 (3つのAIプロバイダー)
+   *
+   * 1️⃣ Gemini API Key (Primary: 最高品質、60req/min無料)
+   *   wrangler secret put GEMINI_API_KEY
+   *   取得: https://aistudio.google.com/app/apikey
+   *
+   * 2️⃣ Workers AI (Secondary: 自動有効、設定不要)
+   *   上記 ai.binding で有効化済み
+   *
+   * 3️⃣ Hugging Face API Token (Tertiary: オプション、トークンなしでも動作)
+   *   wrangler secret put HUGGINGFACE_API_TOKEN
+   *   取得: https://huggingface.co/settings/tokens
+   *
+   * ローカルテスト時は .dev.vars ファイルに記載:
+   *   GEMINI_API_KEY=YOUR_KEY
+   *   HUGGINGFACE_API_TOKEN=YOUR_TOKEN (オプション)
+   */
   /**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

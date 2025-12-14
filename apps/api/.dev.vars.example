@@ -1,0 +1,9 @@
+# Cloudflare Workers 開発環境変数
+# このファイルは .gitignore に追加してください
+
+# Gemini API Key (https://aistudio.google.com/app/apikey で取得)
+# Primary AI Provider (最高品質)
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+
+# Tertiary AI Provider (オプション: トークンなしでも動作するが、レート制限が緩和される)
+HUGGINGFACE_API_TOKEN=YOUR_HUGGINGFACE_TOKEN_HERE

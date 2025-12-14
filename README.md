@@ -11,16 +11,45 @@
 
 ## 📁 構成
 
-```tree
-expo-workers-monorepo/
-├── apps/
-│   ├── api/          # Cloudflare Workers + Hono (API サーバー)
-│   └── client/       # Expo (React Native) アプリ
-├── package.json      # ワークスペース管理
-└── pnpm-workspace.yaml
-```
+## 🌟 機能
 
-## 🚀 クイックスタート（ワンライナー）
+### 🐦 X風要約AI
+
+長文をTwitter/Xの投稿に最適な形式（280字以内、ハッシュタグ付き、キャッチーな文章）に要約するAI機能を搭載。
+
+#### 主要機能
+
+- **入力**: 長文テキスト（最大1500文字、ブログ記事、ニュース、論文など）
+- **出力**: X投稿用の280字以内の要約（ハッシュタグ2〜3個、絵文字最大2個）
+- **シェア**: ワンクリックでクリップボードにコピー
+- **利用制限**: 1日3回まで（IPベース、残り回数表示）
+
+#### 🤖 マルチプロバイダーAI戦略（完全無料・課金なし）
+
+3段階の自動フォールバックで**100%無料運用**を実現:
+
+1. **Primary: Gemini API** (`gemini-1.5-flash`)
+   - 最高品質の要約生成
+   - 無料枠: 60リクエスト/分
+   - 超過時: 自動的に次のプロバイダーへフォールバック
+
+2. **Secondary: Cloudflare Workers AI** (`llama-3.2-1b-instruct`)
+   - 10,000 Neurons/日まで**完全無料**
+   - ⚠️ **課金防止設定**: 無料枠超過時は自動停止（課金されません）
+   - 同じWorkers環境で動作（低レイテンシ）
+
+3. **Tertiary: Hugging Face Inference API** (`google/flan-t5-base`)
+   - **完全無料**（APIトークンなしでも動作）
+   - レート制限あり、最終手段として使用
+
+4. **Fallback: Mock応答**
+   - 全AI一時利用不可時でも動作継続
+
+**どのプロバイダーを使用しても課金は一切発生しません！**
+
+## 🚀 クイックスタート
+
+### 基本セットアップ（ワンライナー）
 
 ```bash
 pnpm install && pnpm dev
@@ -32,6 +61,50 @@ pnpm install && pnpm dev
 - **Expo Metro Bundler**: <http://localhost:8081> (クライアント開発サーバー)
 
 > **注意**: ポート 8081 や 8787 が既に使用中の場合はエラーになります。その場合は実行中のプロセスを停止してから再実行してください。
+
+### 🤖 X風要約AI のセットアップ
+
+完全無料で動作しますが、最高品質を得るために以下の設定を推奨します:
+
+#### 1. Gemini API キーを取得（推奨、無料）
+
+```bash
+# 1. https://aistudio.google.com/app/apikey でAPIキーを取得
+
+# 2. API用の環境変数ファイルを作成
+cd apps/api
+echo "GEMINI_API_KEY=取得したキー" > .dev.vars
+
+# 3. 開発サーバーを起動
+cd ../..
+pnpm dev
+```
+
+#### 2. KV ネームスペースを作成（レート制限用）
+
+```bash
+cd apps/api
+
+# KVネームスペースを作成
+pnpm wrangler kv:namespace create RATE_LIMIT_KV
+
+# 出力されたIDをコピーして wrangler.jsonc に設定
+# "id": "YOUR_KV_NAMESPACE_ID_HERE" を実際のIDに置き換え
+```
+
+#### 3. （オプション）Hugging Face トークン
+
+```bash
+# トークンなしでも動作しますが、レート制限が緩和されます
+# https://huggingface.co/settings/tokens でトークンを取得
+
+# apps/api/.dev.vars に追記
+echo "HUGGINGFACE_API_TOKEN=取得したトークン" >> apps/api/.dev.vars
+```
+
+#### セットアップなしでも動作します
+
+上記の設定なしでも、モックモードで要約機能を試すことができます。`pnpm dev` を実行して Web ブラウザで確認してください。
 
 ## 📱 クライアントの起動
 
@@ -146,14 +219,42 @@ pnpm --filter client web
 
 ## 🔧 環境変数
 
+### Client 環境変数
+
 クライアント側で API の URL を変更する場合は、環境変数を設定できます：
 
 ```bash
-# .env (apps/client/.env)
+# apps/client/.env
 EXPO_PUBLIC_HONO_API_URL=https://your-api.workers.dev
 ```
 
 開発環境ではデフォルトで `http://localhost:8787` が使用されます。
+
+### API 環境変数（X風要約AI用）
+
+```bash
+# apps/api/.dev.vars（ローカル開発用）
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE           # Primary AI（必須推奨）
+HUGGINGFACE_API_TOKEN=YOUR_HF_TOKEN_HERE          # Tertiary AI（オプション）
+```
+
+### Cloudflare Workers シークレット（本番環境）
+
+```bash
+cd apps/api
+
+# Gemini API Key を設定
+pnpm wrangler secret put GEMINI_API_KEY
+# プロンプトでキーを入力
+
+# Hugging Face Token を設定（オプション）
+pnpm wrangler secret put HUGGINGFACE_API_TOKEN
+
+# KV Namespace ID は wrangler.jsonc に直接記載
+# Workers AI は自動的に有効化されます（設定不要）
+```
+
+**重要**: `.dev.vars` ファイルは `.gitignore` に含まれており、コミットされません。
 
 ## 📝 次のステップ
 
@@ -286,3 +387,41 @@ pnpm install
 
 - ファイアウォールで開発サーバーのポートが開いているか確認
 - 実機とPCが同じネットワークに接続されているか確認
+
+### X風要約AIが動作しない
+
+#### モックモードで動作している
+
+開発モードでは、AIキー未設定時にモックモードで動作します。実際のAIを使用するには:
+
+```bash
+# Gemini APIキーを設定
+cd apps/api
+echo "GEMINI_API_KEY=YOUR_KEY" > .dev.vars
+pnpm dev
+```
+
+#### レート制限エラーが出る
+
+1日3回の制限に達した場合は、翌日（UTC 0時）にリセットされます。開発中に制限をリセットしたい場合:
+
+```bash
+# KVストアをクリア（ローカル開発のみ）
+cd apps/api
+pnpm wrangler kv:key delete "rate:YOUR_IP:YYYY-MM-DD" --namespace-id=YOUR_KV_ID
+```
+
+#### Gemini API エラー
+
+- APIキーが正しいか確認: <https://aistudio.google.com/app/apikey>
+- 無料枠（60req/min）を超えていないか確認
+- エラー時は自動的にWorkers AIまたはHugging Faceにフォールバックします
+
+#### Workers AI エラー
+
+- `wrangler.jsonc` に `"ai": {"binding": "AI"}` が設定されているか確認
+- 無料枠（10k Neurons/日）超過時は自動停止（課金されません）
+
+#### すべてのAIが失敗する
+
+全プロバイダーが一時的に利用不可の場合、モック応答が返されます。これは正常な動作です。

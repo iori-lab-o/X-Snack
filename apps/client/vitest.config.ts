@@ -13,4 +13,12 @@ export default defineConfig({
       'react-native': 'react-native-web',
     },
   },
+  define: {
+    __DEV__: true,
+  },
+  server: {
+    deps: {
+      inline: ['expo-clipboard', 'expo-modules-core', 'expo-status-bar'],
+    },
+  },
 });

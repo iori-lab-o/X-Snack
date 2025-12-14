@@ -68,7 +68,7 @@ export async function fetchApi<T = unknown>(path: string, options?: RequestInit)
 /**
  * 共有型
  */
-import type { ApiResponse, User } from '@expo-workers/types';
+import type { ApiResponse, SummarizeRequest, SummarizeResponse, User } from '@expo-workers/types';
 
 /**
  * API エンドポイント
@@ -94,6 +94,13 @@ export const api = {
 
   /** ヘルスチェック */
   healthCheck: () => fetchApi<{ status: string; timestamp: string }>('/health'),
+
+  /** X風要約生成 */
+  summarize: (text: string) =>
+    fetchApi<ApiResponse<SummarizeResponse> & { remainingCount?: number }>('/api/summarize', {
+      method: 'POST',
+      body: JSON.stringify({ text } as SummarizeRequest),
+    }),
 };
 
 export { API_BASE_URL };
