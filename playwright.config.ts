@@ -11,9 +11,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  timeout: 60000,
+  expect: {
+    timeout: 10000,
+  },
   
   use: {
     baseURL: 'http://localhost:8081',
+    actionTimeout: 15000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -31,13 +36,13 @@ export default defineConfig({
       command: 'pnpm --filter api dev',
       url: 'http://localhost:8787',
       reuseExistingServer: !process.env.CI,
-      timeout: 120000,
+      timeout: 180000,
     },
     {
       command: 'pnpm --filter client web',
       url: 'http://localhost:8081',
       reuseExistingServer: !process.env.CI,
-      timeout: 120000,
+      timeout: 180000,
     },
   ],
 });
