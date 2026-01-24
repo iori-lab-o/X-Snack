@@ -4,19 +4,48 @@
 
 ## プロジェクト概要
 
-- **構成**: pnpm ワークスペースによるモノレポ (Expo + Cloudflare Workers)
+**expo-workers-monorepo**: Expo (React Native) + Cloudflare Workers (Hono) のマルチプラットフォームアプリ開発ボイラープレート。
+モバイル（iOS/Android）、Web、API を同一リポジトリで開発できるスターターテンプレートです。
+
+- **構成**: pnpm ワークスペースによるモノレポ
 - **パッケージマネージャー**: pnpm 10.20.0
 - **言語**: TypeScript (strict mode)
 - **アプリ**: X風要約AI - 長文をTwitter/X向けに要約
 
+## 技術スタック
+
+### API (Cloudflare Workers)
+- **Runtime**: Cloudflare Workers
+- **Framework**: Hono (高速 Web フレームワーク)
+- **Testing**: Vitest (Unit)
+- **AI**: Gemini 1.5 Flash (Primary), Workers AI Llama 3 (Secondary), HuggingFace (Tertiary)
+
+### Client (Expo)
+- **Platform**: Expo ~54.0 (React Native 0.81)
+- **UI**: React 19.1
+- **Testing**: Vitest (Unit), React Testing Library
+
+### 共通・ツール
+- **Monorepo**: pnpm workspace
+- **Types**: `@expo-workers/types` (共有型定義)
+- **E2E**: Playwright
+- **Lint/Format**: Biome (高速 Rust 製ツール)
+- **CI/CD**: GitHub Actions
+
 ## ディレクトリ構造
 
 ```
-apps/
-  api/          # Cloudflare Workers (Hono) - ポート 8787
-  client/       # Expo (React Native Web対応)
-packages/
-  types/        # 共有型定義 (@expo-workers/types)
+expo-workers-monorepo/
+├── apps/
+│   ├── api/          # Cloudflare Workers (Hono) - ポート 8787
+│   │   ├── src/      # Hono アプリケーション
+│   │   └── wrangler.jsonc # Workers 設定
+│   └── client/       # Expo (React Native Web対応) - ポート 8081
+│       ├── lib/      # APIクライアント等
+│       └── App.tsx   # メインコンポーネント
+├── packages/
+│   └── types/        # 共有型定義 (@expo-workers/types)
+└── e2e/              # Playwright E2E テスト
 ```
 
 ## 開発コマンド
@@ -30,7 +59,7 @@ pnpm dev
 
 # 個別起動
 pnpm --filter api dev      # API のみ (wrangler dev)
-pnpm --filter client dev   # Client のみ (expo start)
+pnpm --filter client dev   # Client のみ (expo start) (w: web, i: ios, a: android)
 pnpm --filter client web   # Client Web版
 ```
 
@@ -46,16 +75,9 @@ pnpm test:e2e                 # E2E (Playwright)
 pnpm --filter api test -- --run apps/api/test/users.spec.ts
 pnpm --filter client test -- --run apps/client/__tests__/App.test.tsx
 
-# テストパターン指定
-pnpm --filter api test -- --run -t "GET /api/users"
-
 # CIモード (watch無効)
 pnpm --filter api test -- --run
 pnpm --filter client test -- --run
-
-# E2Eデバッグ
-pnpm test:e2e:ui              # UIモード
-pnpm test:e2e:debug           # デバッグモード
 ```
 
 ## リント・フォーマット
@@ -68,157 +90,76 @@ pnpm format        # フォーマット適用
 
 ## コードスタイル (Biome設定)
 
-### フォーマット
-- インデント: スペース 2
-- 行幅: 100文字
-- 改行: LF
-- クォート: シングルクォート `'`
-- セミコロン: 必須
-- トレイリングカンマ: ES5形式
-- アロー関数括弧: 常に付ける `(x) => x`
-
-### リントルール
-- `noExplicitAny`: error (any禁止)
-- `noDoubleEquals`: warn (=== を使用)
-- `noNonNullAssertion`: warn (! 非推奨)
-- `useConst`: error (const優先)
-- `noUnusedVariables`: error (未使用変数禁止)
-
-### TypeScript
-- strict: true
-- esModuleInterop: true
-- moduleResolution: bundler
+- **インデント**: スペース 2
+- **クォート**: シングルクォート `'`
+- **セミコロン**: 必須
+- **TypeScript**: strict mode
 
 ## 命名規則
 
 - **ファイル**: camelCase (`apiClient.ts`, `users.spec.ts`)
 - **コンポーネント**: PascalCase (`App.tsx`)
-- **変数・関数**: camelCase (`fetchApi`, `validateApiUrl`)
+- **変数・関数**: camelCase (`fetchApi`)
 - **型・インターフェース**: PascalCase (`SummarizeRequest`, `ApiResponse`)
 - **定数**: UPPER_SNAKE_CASE (`API_BASE_URL`)
 
-## インポート順序
+## X風要約AI の実装詳細
 
-Biome が自動整理。手動では以下の順序を推奨:
+### マルチプロバイダーフォールバック戦略
 
-```typescript
-// 1. 外部パッケージ
-import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+完全無料・課金なしを実現する3段階フォールバック:
 
-// 2. ワークスペースパッケージ
-import type { SummarizeRequest } from '@expo-workers/types';
+1. **Gemini API** (`gemini-1.5-flash`): Primary、最高品質、60req/min無料
+2. **Cloudflare Workers AI** (`llama-3.2-1b-instruct`): Secondary、10k Neurons/日無料
+3. **Hugging Face** (`google/flan-t5-base`): Tertiary、完全無料
+4. **Mock応答**: 全AI失敗時のフォールバック
 
-// 3. 相対パス
-import { api } from '../lib/apiClient';
+### 入出力仕様
+
+- **入力**: 最大1500文字 (超過時は自動トリム)
+- **出力**: 280字以内 (本文 + ハッシュタグ)
+- **ハッシュタグ**: 2〜3個、末尾に統一
+- **絵文字**: 最大2個
+
+### レート制限
+- **制限**: 1日3回/IP
+- **管理**: Cloudflare KV (`rate:{IP}:{YYYY-MM-DD}`)
+- **超過時**: HTTP 429 エラー
+
+## 環境変数
+
+### Client (`apps/client/.env`)
+```bash
+EXPO_PUBLIC_HONO_API_URL=http://localhost:8787  # 開発環境
+# EXPO_PUBLIC_HONO_API_URL=https://your-api.workers.dev  # 本番環境
 ```
 
-## 型定義
-
-- 共有型は `packages/types/src/index.ts` に定義
-- API の型エクスポート: `export type AppType = typeof app;`
-- レスポンス型には `ApiResponse<T>` を使用
-
-```typescript
-// 正しい例
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
+### API ローカル (`apps/api/.dev.vars`)
+GitHubリポジトリにはコミットしないでください。
+```bash
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+HUGGINGFACE_API_TOKEN=YOUR_HF_TOKEN_HERE (Optional)
 ```
 
-## エラーハンドリング
-
-```typescript
-// API エラーレスポンス形式
-return c.json({ success: false, error: 'エラーメッセージ' }, 400);
-
-// try-catch パターン
-try {
-  // 処理
-} catch (error) {
-  console.error('説明:', error);
-  return c.json({ success: false, error: '処理中にエラーが発生しました' }, 500);
-}
+### API 本番 (Cloudflare Secrets)
+```bash
+pnpm wrangler secret put GEMINI_API_KEY
+pnpm wrangler secret put HUGGINGFACE_API_TOKEN
 ```
-
-## 日本語開発設定
-
-- **ドキュメント・コミットメッセージ**: 日本語
-- **コード内コメント**: 日本語
-- **識別子 (変数名・関数名)**: 英語
-- **エラーメッセージ**: 日本語 (ユーザー向け)
-- **ログ出力**: 日本語可
 
 ## API 開発パターン
 
 ### エンドポイント追加
 1. `apps/api/src/index.ts` にルート追加
-2. 必要に応じて `packages/types/src/index.ts` に型追加
+2. `packages/types/src/index.ts` に型追加 (共有型)
 3. `apps/api/test/` にテスト追加
 
-### Hono ルート例
-```typescript
-app.get('/api/example', (c) => {
-  return c.json({ success: true, data: { /* ... */ } });
-});
+### クライアント連携
+- `apps/client/lib/apiClient.ts` を使用
+- 型は `@expo-workers/types` からインポート
 
-app.post('/api/example', async (c) => {
-  const body = await c.req.json<RequestType>();
-  // バリデーション
-  if (!body.field) {
-    return c.json({ success: false, error: '必須項目です' }, 400);
-  }
-  return c.json({ success: true, data: result }, 201);
-});
-```
+## 日本語開発設定
 
-## テスト作成
-
-### API テスト (Cloudflare Workers Pool)
-```typescript
-import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
-import worker from '../src/index';
-
-it('unit: GET /api/endpoint', async () => {
-  const request = new Request('http://example.com/api/endpoint');
-  const ctx = createExecutionContext();
-  const response = await worker.fetch(request, env, ctx);
-  await waitOnExecutionContext(ctx);
-  expect(response.status).toBe(200);
-});
-```
-
-### Client テスト (React Testing Library)
-```typescript
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('../lib/apiClient', () => ({ api: { method: vi.fn() } }));
-
-it('コンポーネントテスト', async () => {
-  render(<Component />);
-  expect(screen.getByText(/テキスト/)).toBeTruthy();
-});
-```
-
-## 環境変数
-
-- **Client**: `apps/client/.env` に `EXPO_PUBLIC_HONO_API_URL`
-- **API ローカル**: `apps/api/.dev.vars` (gitignore済み)
-- **API 本番**: `wrangler secret put SECRET_NAME`
-
-## よくあるトラブル
-
-- **ポート 8787 が使用中**: `pnpm dlx kill-port 8787`
-- **Android SDK なし**: `pnpm --filter client web` で Web 開発
-
-## 参考ファイル
-
-- API実装: `apps/api/src/index.ts`
-- APIクライアント: `apps/client/lib/apiClient.ts`
-- 共有型: `packages/types/src/index.ts`
-- Workers設定: `apps/api/wrangler.jsonc`
-- CI設定: `.github/workflows/ci.yml`
+- **ドキュメント・コミットメッセージ**: 日本語
+- **コード内コメント**: 日本語
+- **変数名・関数名**: 英語

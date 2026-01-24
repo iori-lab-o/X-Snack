@@ -67,3 +67,10 @@ coverage/
 .last-run.json
 playwright-report/
 test-results/
+
+# Agent
+.agent/skills/
+.agents/skills/
+.gemini/skills/
+.github/skills/
+.opencode/skills/
