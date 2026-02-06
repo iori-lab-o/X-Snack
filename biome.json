@@ -43,6 +43,7 @@
     }
   },
   "files": {
+    "include": ["apps/", "docs/", "e2e/", "packages/", "*.json"],
     "ignore": [
       "node_modules",
       "dist",
