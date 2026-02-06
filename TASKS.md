@@ -61,10 +61,13 @@
 ## 🚧 進行中
 
 ### Phase 6: CI/CD 強化
-- [ ] **自動デプロイの有効化**
-  - [ ] GitHub Secrets 設定（CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID）
-  - [ ] デプロイワークフローのテスト
-  - [ ] 本番環境へのデプロイ確認
+- [x] **自動デプロイの有効化**
+  - [x] GitHub Secrets 設定（CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID）
+  - [x] デプロイワークフローの構築（API: `x-snack-api`, Client: `x-snack-client`）
+    - [x] API deployment config
+    - [x] Client deployment config
+    - [x] Fix: Create Pages project `x-snack-client` (手動作成完了)
+  - [x] 本番環境へのデプロイ確認
   - 優先度: 高
   - 担当: DevOps
   - 参考: [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md)
@@ -92,6 +95,20 @@
   - [ ] モバイルビューポートのテスト
   - 優先度: 中
 
+### レート制限
+- [ ] **ユーザー識別精度の向上**
+  - 現状: IPアドレス（`cf-connecting-ip`）で識別
+  - 課題:
+    - [ ] 共有IPの問題（会社・学校で3回を共有してしまう）
+    - [ ] 動的IPの問題（VPN/モバイルで回避可能）
+    - [ ] ヘッダー偽装リスク（直接API呼び出し時）
+  - 改善案:
+    - [ ] 認証機能との連携（ログインユーザーIDでカウント）
+    - [ ] ブラウザフィンガープリント + IP の複合識別
+    - [ ] Cookie ID による補助的な識別
+  - 優先度: 中
+  - 関連: [apps/api/src/index.ts](apps/api/src/index.ts) (152-174行目)
+
 ---
 
 ## 📋 未着手（優先度: 中）
@@ -116,6 +133,21 @@
   - [ ] プロンプト調整
   - 優先度: 低
   - 見積: 1日
+
+- [ ] **要約精度のプロンプト改善**
+  - 現状の課題:
+    - [ ] ハッシュタグが適切に生成されない場合がある
+    - [ ] 文章の重要なポイントが欠落することがある
+    - [ ] 280文字制限への最適化が不十分
+    - [ ] 文体の一貫性（X投稿らしさ）の向上
+  - 改善アイデア:
+    - [ ] Few-shot プロンプトの導入（良い例を複数提示）
+    - [ ] 要約指示の明確化（簡潔さ・インパクト重視）
+    - [ ] モデルの出力温度（temperature）調整
+    - [ ] プロンプトテンプレートのA/Bテスト
+  - 優先度: 中
+  - 見積: 2-3日
+  - 関連: [apps/api/src/services/summarize.ts](apps/api/src/services/summarize.ts)
 
 ### パフォーマンス
 - [ ] **API レスポンスタイムの最適化**
@@ -257,4 +289,4 @@
 
 ---
 
-**次回作業**: GitHub Secrets 設定 → 自動デプロイテスト → Client テスト拡充
+**次回作業**: デプロイ確認 → Client テスト拡充の続き（完了済み）

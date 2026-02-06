@@ -36,12 +36,28 @@ function validateApiUrl(url: string): string {
   }
 }
 
-const rawApiUrl =
-  process.env.EXPO_PUBLIC_HONO_API_URL ||
-  process.env.HONO_API_URL ||
-  process.env.API_URL ||
-  'http://localhost:8787';
+// API ベース URL の決定
+const getApiBaseUrl = () => {
+  // ブラウザ環境での実行時
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
 
+    // 本番環境（Pages）で実行されている場合
+    if (hostname.includes('pages.dev') || hostname.includes('x-snack-client')) {
+      return 'https://x-snack-api.km-worker.workers.dev';
+    }
+  }
+
+  // 環境変数が定義されている場合はそれを優先
+  if (process.env.EXPO_PUBLIC_HONO_API_URL) return process.env.EXPO_PUBLIC_HONO_API_URL;
+  if (process.env.HONO_API_URL) return process.env.HONO_API_URL;
+  if (process.env.API_URL) return process.env.API_URL;
+
+  // デフォルト（ローカル開発）
+  return 'http://localhost:8787';
+};
+
+const rawApiUrl = getApiBaseUrl();
 const API_BASE_URL = validateApiUrl(rawApiUrl);
 
 /**

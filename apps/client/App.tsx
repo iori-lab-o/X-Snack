@@ -96,7 +96,9 @@ export default function App() {
             style={styles.textArea}
             multiline
             numberOfLines={8}
-            placeholder="要約したい長文をここに入力してください...\n\n例: ブログ記事、ニュース、論文の要約など"
+            placeholder={`要約したい長文をここに入力してください...
+
+例: ブログ記事、ニュース、論文の要約など`}
             placeholderTextColor={Colors.text.tertiary}
             value={inputText}
             onChangeText={setInputText}
