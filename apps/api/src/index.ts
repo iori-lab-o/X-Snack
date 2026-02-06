@@ -171,6 +171,23 @@ app.post('/api/summarize', async (c) => {
 
       // カウント増加 (24時間TTL: 86400秒)
       await kv.put(rateLimitKey, String(count + 1), { expirationTtl: 86400 });
+
+      // ===== システム全体の総リクエスト制限 (1日 1,000回) =====
+      const globalLimitKey = `rate:global:${today}`;
+      const currentGlobalCount = await kv.get(globalLimitKey);
+      const globalCount = currentGlobalCount ? Number.parseInt(currentGlobalCount, 10) : 0;
+
+      if (globalCount >= 1000) {
+        return c.json(
+          {
+            success: false,
+            error: 'システム全体の本日上限に達しました。明日再度お試しください。',
+            remainingCount: 0,
+          },
+          429
+        );
+      }
+      await kv.put(globalLimitKey, String(globalCount + 1), { expirationTtl: 86400 });
     }
 
     // ===== マルチプロバイダーフォールバック (完全無料・課金なし) =====
